@@ -6,21 +6,24 @@ with_driver 'aws::eu-west-1'
 # This recipe sets every single value of every single object
 #
 
-aws_dhcp_options 'ref-dhcp-options' do
-  domain_name          'example.com'
-  domain_name_servers  %w(8.8.8.8 8.8.4.4)
-  ntp_servers          %w(8.8.8.8 8.8.4.4)
-  netbios_name_servers %w(8.8.8.8 8.8.4.4)
-  netbios_node_type    2
+aws_vpc 'ref-vpc' do
+  action :purge
 end
+# aws_dhcp_options 'ref-dhcp-options' do
+#   domain_name          'example.com'
+#   domain_name_servers  %w(8.8.8.8 8.8.4.4)
+#   ntp_servers          %w(8.8.8.8 8.8.4.4)
+#   netbios_name_servers %w(8.8.8.8 8.8.4.4)
+#   netbios_node_type    2
+# end
 
 aws_vpc 'ref-vpc' do
   cidr_block '10.0.0.0/24'
   internet_gateway true
   instance_tenancy :default
   main_routes '0.0.0.0/0' => :internet_gateway
-  dhcp_options 'ref-dhcp-options'
-  enable_dns_support true
+  # dhcp_options 'ref-dhcp-options'
+  # enable_dns_support true
   enable_dns_hostnames true
 end
 
@@ -35,21 +38,14 @@ end
 
 
 aws_key_pair 'ref-key-pair' do
-  private_key_options({
-    :format => :der,
-    :type => :dsa
-  })
   allow_overwrite true
 end
 
 
 aws_security_group 'ref-sg1' do
   vpc 'ref-vpc'
-  inbound_rules '0.0.0.0/0' => 22
-  inbound_rules '0.0.0.0/0' => 80
-  outbound_rules [
-    {:ports => 22, :protocol => :tcp, :destinations => ['0.0.0.0/0'] }
-  ]
+  inbound_rules '0.0.0.0/0' => [ 22, 80 ]
+  outbound_rules 22 => '0.0.0.0/0'
 end
 
 
@@ -66,16 +62,17 @@ aws_subnet 'ref-subnet' do
   route_table 'ref-public'
 end
 
-machine_image 'ref-machine_image1' do
-  image_options description: 'some image description'
-end
-
-machine_image 'ref-machine_image2' do
-  from_image 'ref-machine_image1'
-end
-
+# machine_image 'ref-machine_image1' do
+#   image_options description: 'some image description'
+# end
+#
+# machine_image 'ref-machine_image2' do
+#   from_image 'ref-machine_image1'
+# end
+#
 machine_image 'ref-machine_image3' do
-  machine_options bootstrap_options: { subnet_id: 'ref-subnet', security_group_ids: 'ref-sg1', image_id: 'ref-machine_image1' }
+  machine_options bootstrap_options: { subnet_id: 'ref-subnet', security_group_ids: 'ref-sg1', key_name: 'ref-key-pair' },
+                  ssh_options: { timeout: 30 }
 end
 
 machine_batch do

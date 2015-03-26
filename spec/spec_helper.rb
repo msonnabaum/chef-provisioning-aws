@@ -14,6 +14,7 @@ require 'aws_support'
 RSpec.configure do |rspec|
   rspec.run_all_when_everything_filtered = true
   rspec.filter_run :focus
+  rspec.exclusion_filter[:super_slow] = true
 #  rspec.order = 'random'
   rspec.expect_with(:rspec) { |c| c.syntax = :expect }
 #  rspec.before { allow($stdout).to receive(:write) }

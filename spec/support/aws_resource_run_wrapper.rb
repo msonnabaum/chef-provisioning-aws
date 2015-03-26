@@ -4,11 +4,7 @@ module AWSSupport
   class AWSResourceRunWrapper < Cheffish::RSpec::RecipeRunWrapper
     def initialize(example, resource_type, name, &properties)
       super(example.chef_config) do
-        if properties && properties.parameters.size > 0
-          public_send(resource_type, name) { instance_exec(example, &properties) }
-        else
-          public_send(resource_type, name, &properties)
-        end
+        public_send(resource_type, name, &properties)
       end
       @example = example
       @resource_type = resource_type
@@ -33,7 +29,7 @@ module AWSSupport
       name = self.name
       example.recipe do
         public_send(resource_type, name) do
-          action :purge
+          action :destroy
         end
       end.converge
     end
