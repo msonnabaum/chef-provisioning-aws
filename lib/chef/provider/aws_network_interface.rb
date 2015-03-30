@@ -35,7 +35,7 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
   def create_aws_object
     eni = nil
     converge_by "create new #{new_resource} in #{region}" do
-      eni = new_resource.driver.ec2.network_interfaces.create(initial_options)
+      eni = new_resource.driver.ec2.network_interfaces.create(options)
       eni.tags['Name'] = new_resource.name
     end
 
@@ -46,15 +46,15 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
   end
 
   def update_aws_object(eni)
-    # if initial_options.has_key?(:subnet)
-    #   if initial_options[:subnet] != eni.subnet
-    #     raise "#{new_resource} is #{new_resource.subnet}, but actual network interface has subnet set to #{eni.subnet_id}.  Cannot be modified!"
-    #   end
-    # end
+    if options.has_key?(:subnet)
+      if Chef::Resource::AwsSubnet.get_aws_object(options[:subnet], resource: new_resource) != eni.subnet
+        raise "#{new_resource} subnet is #{new_resource.subnet}, but actual network interface has subnet set to #{eni.subnet_id}.  Cannot be modified!"
+      end
+    end
   end
 
   def destroy_aws_object(eni)
-    # detach(volume) if volume.status == :in_use
+    detach(eni) if eni.status == :in_use
     delete(eni)
   end
 
@@ -71,10 +71,14 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
     @expected_instance
   end
 
-  def initial_options
-    @initial_options ||= begin
+  def options
+    @options ||= begin
       options = {}
       options[:subnet] = new_resource.subnet if !new_resource.subnet.nil?
+      options[:private_ip_address] = new_resource.private_ip_address if !new_resource.private_ip_address.nil?
+      options[:description] = new_resource.description if !new_resource.description.nil?
+      options[:security_groups] = new_resource.security_groups if !new_resource.security_groups.nil?
+      options[:device_index] = new_resource.device_index if !new_resource.device_index.nil?
 
       AWSResource.lookup_options(options, resource: new_resource)
     end
@@ -128,11 +132,10 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
   end
 
   def detach(eni)
-    attachment = current_attachment(eni)
-    instance = attachment.instance
-    device   = attachment.device_index
+    attachment   = current_attachment(eni)
+    instance     = attachment.instance
 
-    converge_by "detach #{new_resource} from #{new_resource.machine} (#{instance.instance_id})" do
+    converge_by "detach #{new_resource} from #{instance.instance_id}" do
       eni.detach
     end
 
@@ -144,8 +147,6 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
 
   def attach(eni)
     converge_by "attach #{new_resource} to #{new_resource.machine} (#{expected_instance.instance_id})" do
-      options = {}
-      options[:device_index] = new_resource.device_index if !new_resource.device_index.nil?
       eni.attach(expected_instance, options)
     end
 
