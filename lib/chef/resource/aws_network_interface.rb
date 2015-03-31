@@ -1,5 +1,6 @@
 require 'chef/provisioning/aws_driver/aws_resource'
 require 'chef/resource/aws_subnet'
+require 'chef/resource/aws_eip_address'
 
 class Chef::Resource::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSResourceWithEntry
   aws_sdk_type AWS::EC2::NetworkInterface
@@ -10,7 +11,7 @@ class Chef::Resource::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSRe
     name =~ /^eni-[a-f0-9]{8}$/ ? name : nil
   }
 
-  attribute :subnet,                 kind_of: [String, AWS::EC2::Subnet, AwsSubnet]
+  attribute :subnet,                 kind_of: [ String, AWS::EC2::Subnet, AwsSubnet ]
 
   attribute :private_ip_address,     kind_of: String
 
@@ -20,7 +21,10 @@ class Chef::Resource::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSRe
 
   attribute :machine,                kind_of: [ String, FalseClass, AwsInstance, AWS::EC2::Instance ]
 
-  attribute :device_index,           kind_of: Integer, default: 1
+  attribute :device_index,           kind_of: Integer
+
+  # TODO implement eip address association
+  #attribute :elastic_ip_address,     kind_of: [ String, AWS::EC2::ElasticIp, AwsEipAddress, FalseClass ]
 
   def aws_object
     driver, id = get_driver_and_id

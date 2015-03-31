@@ -51,6 +51,34 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
         raise "#{new_resource} subnet is #{new_resource.subnet}, but actual network interface has subnet set to #{eni.subnet_id}.  Cannot be modified!"
       end
     end
+
+    # TODO implement private ip reassignment
+    if options.has_key?(:private_ip_address)
+      if options[:private_ip_address] != eni.private_ip_address
+        raise "#{new_resource} private IP is #{new_resource.private_ip_address}, but actual network interface has private IP set to #{eni.private_ip_address}.  Private IP reassignment not implemented. Cannot be modified!"
+      end
+    end
+
+    # TODO implement change description
+    if options.has_key?(:description)
+      if options[:description] != eni.description
+        raise "#{new_resource} description is #{new_resource.description}, but actual network interface has description set to #{eni.description}.  Description change not implemented. Cannot be modified!"
+      end
+    end
+
+    if options.has_key?(:security_groups)
+      groups = new_resource.security_groups.map { |sg|
+        Chef::Resource::AwsSecurityGroup.get_aws_object(sg, resource: new_resource)
+      }
+      if groups.sort != eni.security_groups.sort
+        converge_by "set #{new_resource} security groups to #{groups}" do
+          eni.set_security_groups(groups)
+          eni
+        end
+      end
+    end
+
+    eni
   end
 
   def destroy_aws_object(eni)
@@ -87,7 +115,7 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
   def update_eni(eni)
     status = eni.status
     #
-    # If we were told to attach the volume to a machine, do so
+    # If we were told to attach the network interface to a machine, do so
     #
     if expected_instance.is_a?(AWS::EC2::Instance)
       case status
@@ -96,7 +124,7 @@ class Chef::Provider::AwsNetworkInterface < Chef::Provisioning::AWSDriver::AWSPr
       when :in_use
         # We don't want to attempt to reattach to the same instance or device index
         attachment = current_attachment(eni)
-        if attachment.instance != expected_instance || attachment.device_index != new_resource.device_index
+        if attachment.instance != expected_instance || (options[:device_index] && attachment.device_index != new_resource.device_index)
           detach(eni)
           attach(eni)
         end

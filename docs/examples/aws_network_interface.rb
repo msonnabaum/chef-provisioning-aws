@@ -47,18 +47,24 @@ ref_machine = machine 'ref-machine-eni-1' do
 end
 
 aws_network_interface 'ref-eni-1' do
+  machine 'ref-machine-eni-1'
   subnet 'ref-subnet-eni'
+  security_groups ['ref-sg1-eni']
+  description 'ref-eni-desc'
+end
+
+aws_network_interface 'ref-eni-1' do
   security_groups ['ref-sg1-eni', 'ref-sg2-eni']
+end
+
+aws_network_interface 'ref-eni-1' do
+  device_index 2
 end
 
 # raise can not be modifed exception
 # aws_network_interface 'ref-eni-1' do
 #   subnet 'subnet-f0836387'
 # end
-
-aws_network_interface 'ref-eni-1' do
-  machine 'ref-machine-eni-1'
-end
 
 aws_network_interface 'ref-eni-1' do
   machine false
@@ -71,10 +77,12 @@ end
 instance = nil
 ruby_block 'get instance' do
   block do
-    instance = Chef::Resource::AwsInstance.get_aws_object(ref_machine.name, resource: ref_machine,
+    instance = Chef::Resource::AwsInstance.get_aws_object(ref_machine.name, 
+      resource: ref_machine,
       driver: run_context.chef_provisioning.current_driver,
       run_context: run_context,
-      managed_entry_store: Chef::Provisioning.chef_managed_entry_store(ref_machine.chef_server))
+      managed_entry_store: Chef::Provisioning.chef_managed_entry_store(ref_machine.chef_server)
+    )
   end
 end
 
