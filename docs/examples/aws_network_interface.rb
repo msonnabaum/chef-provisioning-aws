@@ -42,8 +42,8 @@ with_machine_options :bootstrap_options => {
     :security_group_ids => ['ref-sg1-eni', 'ref-sg2-eni']
   }
 
-machine 'ref-machine-eni-1' do
-  action :allocate
+ref_machine = machine 'ref-machine-eni-1' do
+  converge false
 end
 
 aws_network_interface 'ref-eni-1' do
@@ -68,17 +68,25 @@ aws_network_interface 'ref-eni-1' do
   action :destroy
 end
 
+instance = nil
+ruby_block 'get instance' do
+  block do
+    instance = Chef::Resource::AwsInstance.get_aws_object(ref_machine.name, resource: ref_machine,
+      driver: run_context.chef_provisioning.current_driver,
+      run_context: run_context,
+      managed_entry_store: Chef::Provisioning.chef_managed_entry_store(ref_machine.chef_server))
+  end
+end
+
 machine 'ref-machine-eni-1' do
   action :destroy
 end
 
 ruby_block 'wait for instance to terminate' do
   block do
-    # TODO how do I get the instance here?
-    # instance = Chef::Resource::AwsInstance.get_aws_object('ref-machine-eni-1', new_resource: ?)
-    # Retryable.retryable(:tries => 60, :sleep => 2) do
-    #   raise 'instance never terminated' if instance.status != :terminated
-    # end
+    Retryable.retryable(:tries => 60, :sleep => 2) do
+      raise 'instance never terminated' if instance.status != :terminated
+    end
   end
 end
 
