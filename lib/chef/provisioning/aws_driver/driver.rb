@@ -1270,10 +1270,10 @@ EOD
     end
 
     def convergence_strategy_for(machine_spec, machine_options)
+      convergence_options = machine_options.fetch(:convergence_options, {})
       # Tell Ohai that this is an EC2 instance so that it runs the EC2 plugin
-      convergence_options = Cheffish::MergedConfig.new(
-        machine_options[:convergence_options] || {},
-        ohai_hints: { 'ec2' => '' })
+      convergence_options[:ohai_hints] ||= {}
+      convergence_options[:ohai_hints]['ec2'] ||= ''
 
       # Defaults
       if !machine_spec.reference
