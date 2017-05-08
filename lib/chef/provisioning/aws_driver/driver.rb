@@ -676,6 +676,10 @@ EOD
     end
 
     def allocate_machines(action_handler, specs_and_options, parallelizer)
+      specs_and_options = Hash[specs_and_options.map do |machine_spec, machine_options|
+        [machine_spec, deep_symbolize_keys(machine_options)]
+      end]
+
       create_servers(action_handler, specs_and_options, parallelizer) do |machine_spec, server|
         yield machine_spec
       end
